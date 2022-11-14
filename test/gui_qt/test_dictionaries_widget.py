@@ -2,7 +2,6 @@ from collections import namedtuple
 from pathlib import Path
 from textwrap import dedent
 from types import SimpleNamespace
-from unittest import mock
 import operator
 
 from PyQt5.QtCore import QModelIndex, QPersistentModelIndex, Qt
@@ -16,6 +15,8 @@ from plover.steno_dictionary import StenoDictionary, StenoDictionaryCollection
 from plover.misc import expand_path
 
 from plover_build_utils.testing import parametrize
+
+from ..py37compat import mock
 
 
 INVALID_EXCEPTION = Exception('loading error')

@@ -2,6 +2,7 @@ import time
 
 from PyQt5.QtCore import (
     QAbstractListModel,
+    QMimeData,
     QModelIndex,
     Qt,
 )
@@ -16,9 +17,9 @@ from wcwidth import wcwidth
 
 from plover import _, system
 
-from plover.gui_qt.paper_tape_ui import Ui_PaperTape
-from plover.gui_qt.utils import ToolBar
-from plover.gui_qt.tool import Tool
+from .paper_tape_ui import Ui_PaperTape
+from .utils import ActionCopyViewSelectionToClipboard, ToolBar
+from .tool import Tool
 
 
 STYLE_PAPER, STYLE_RAW = (
@@ -67,12 +68,6 @@ class TapeModel(QAbstractListModel):
     def _raw_format(stroke):
         return stroke.rtfcre
 
-    def headerData(self, section, orientation, role):
-        if (section != 0 or orientation != Qt.Horizontal or
-            role != Qt.DisplayRole or self._style != STYLE_PAPER):
-            return None
-        return self._all_keys
-
     def data(self, index, role):
         if not index.isValid():
             return None
@@ -104,6 +99,17 @@ class TapeModel(QAbstractListModel):
         self._stroke_list.append(stroke)
         self.endInsertRows()
 
+    def mimeTypes(self):
+        return ['text/plain']
+
+    def mimeData(self, indexes):
+        data = QMimeData()
+        data.setText('\n'.join(filter(None, (
+            self.data(index, Qt.DisplayRole)
+            for index in indexes
+        ))))
+        return data
+
 
 class PaperTape(Tool, Ui_PaperTape):
 
@@ -122,6 +128,9 @@ class PaperTape(Tool, Ui_PaperTape):
         self.header.setContentsMargins(4, 0, 0, 0)
         self.styles.addItems(TAPE_STYLES)
         self.tape.setModel(self._model)
+        self.tape.setSelectionMode(self.tape.ExtendedSelection)
+        self._copy_action = ActionCopyViewSelectionToClipboard(self.tape)
+        self.tape.addAction(self._copy_action)
         # Toolbar.
         self.layout().addWidget(ToolBar(
             self.action_ToggleOnTop,
@@ -163,7 +172,8 @@ class PaperTape(Tool, Ui_PaperTape):
 
     def on_config_changed(self, config):
         if 'system_name' in config:
-            self._model.reset()
+            all_keys = self._model.reset()
+            self.header.setText(all_keys)
 
     @property
     def _scroll_at_end(self):
